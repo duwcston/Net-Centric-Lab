@@ -5,35 +5,29 @@ import (
 	"math/rand"
 )
 
-// create a board with random mines position
 func createBoard(width int, height int, mines int) [][]string {
-	board := make([][]string, height+1)
-	minesCoordinates := make([][]int, mines)
+	board := make([][]string, height)
 	for i := range board {
-		board[i] = make([]string, width+1)
-	}
-	for i := range minesCoordinates {
-		minesCoordinates[i] = make([]int, 2)
-	}
-	for i := range board {
+		board[i] = make([]string, width)
 		for j := range board[i] {
 			board[i][j] = ". "
 		}
 	}
-	for i := 0; i < mines; i++ {
-		x := rand.Intn(width) + 1
-		y := rand.Intn(height) + 1
-		for j := 0; j < i; j++ {
-			if minesCoordinates[j][0] == x && minesCoordinates[j][1] == y {
-				x = rand.Intn(width) + 1
-				y = rand.Intn(height) + 1
-				j = 0
-			}
+
+	minePositions := make(map[[2]int]bool)
+
+	for i := 0; i < mines; {
+		x := rand.Intn(width)
+		y := rand.Intn(height)
+		pos := [2]int{x, y}
+
+		if !minePositions[pos] {
+			board[y][x] = "* "
+			minePositions[pos] = true
+			i++
 		}
-		minesCoordinates[i][0] = x
-		minesCoordinates[i][1] = y
-		board[x][y] = "* "
 	}
+
 	return board
 }
 
