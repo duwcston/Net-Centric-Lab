@@ -83,7 +83,7 @@ func handleRequest(conn net.Conn) {
 
 	} else if strings.HasPrefix(clientMsg, "Register") {
 		handleRegister(clientMsg)
-		conn.Write([]byte("_Register successful"))
+		conn.Write([]byte(key + "_Register successful"))
 	}
 }
 
@@ -91,17 +91,18 @@ func encryptPassword(password string) string {
 	return base64.StdEncoding.EncodeToString([]byte(password))
 }
 
-func decryptPassword(encryptedPassword string) string {
-	decoded, _ := base64.StdEncoding.DecodeString(encryptedPassword)
-	return string(decoded)
-}
+// func decryptPassword(encryptedPassword string) string {
+// 	decoded, _ := base64.StdEncoding.DecodeString(encryptedPassword)
+// 	return string(decoded)
+// }
 
 func loadUsers(filename string) []User {
 	jsonFile, err := os.Open(filename)
 
 	// Check if the file exists
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Error opening file:", err)
+		os.Exit(1)
 	}
 
 	data, _ := io.ReadAll(jsonFile)
@@ -168,7 +169,8 @@ func startGuessingGame(err error, conn net.Conn) {
 			received := make([]byte, 1024)
 			_, err = conn.Read(received)
 			if err != nil {
-				log.Fatal(err)
+				fmt.Println("Error reading from client:", err)
+				break
 			}
 
 			clientMsg := strings.TrimSpace(string(received[:]))
@@ -214,13 +216,11 @@ func startFileTransfer(conn net.Conn) {
 
 	// Check if the file exists on the server
 	if _, err := os.Stat(fileName); os.IsNotExist(err) {
-		// File does not exist, notify the client
 		conn.Write([]byte("Error: File not found\n"))
 		fmt.Println(key+"_File not found:", fileName)
 		return
 	}
 
-	// File exists, start the file transfer
 	file, err := os.Open(fileName)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
@@ -229,10 +229,9 @@ func startFileTransfer(conn net.Conn) {
 	}
 	defer file.Close()
 
-	// Notify client that file is starting to download
 	conn.Write([]byte("File download starting...\n"))
 
-	// Send file data in chunks
+	// Send file data
 	buffer = make([]byte, 1024)
 	for {
 		n, err := file.Read(buffer)
@@ -246,7 +245,6 @@ func startFileTransfer(conn net.Conn) {
 		conn.Write(buffer[:n]) // Send the context to the client
 	}
 
-	// Notify client the file transfer is complete
 	conn.Write([]byte("\nFile download complete\n"))
 	fmt.Println("File download completed for:", fileName)
 }

@@ -202,6 +202,7 @@ func playGame(err error, conn *net.TCPConn) {
 			}
 		}
 	}
+	return
 }
 
 func requestFile(conn net.Conn, fileName string) {
