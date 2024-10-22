@@ -1,0 +1,14 @@
+[
+    {
+        "username": "admin",
+        "password": "YWRtaW4=",
+        "fullname": "Administrator",
+        "email": [
+            "admin@email.com",
+            "ad@email.com"
+        ],
+        "address": [
+            "HCM"
+        ]
+    }
+]
