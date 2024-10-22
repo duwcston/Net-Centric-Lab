@@ -5,9 +5,22 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
-func count(word string, resultChan chan<- map[rune]int, wg *sync.WaitGroup) {
+// func count(word string, result map[rune]int) {
+// 	startTime := time.Now()
+// 	counts := make(map[rune]int)
+// 	for _, r := range word {
+// 		counts[r]++
+// 	}
+// 	for key, value := range counts {
+// 		result[key] += value
+// 	}
+// 	fmt.Println("Time taken to count characters:", time.Since(startTime))
+// }
+
+func countGo(word string, resultChan chan<- map[rune]int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	counts := make(map[rune]int)
 	for _, r := range word {
@@ -30,8 +43,10 @@ func main() {
 	wordChan := make(chan map[rune]int, len(words)) // Buffered channel
 
 	wg.Add(len(words))
+
+	startTime := time.Now()
 	for _, word := range words {
-		go count(word, wordChan, &wg)
+		go countGo(word, wordChan, &wg)
 	}
 
 	go func() {
@@ -58,4 +73,6 @@ func main() {
 			fmt.Printf("%c: %d\n", key, value)
 		}
 	}
+
+	fmt.Println("Time taken to count characters using Go concurrency:", time.Since(startTime))
 }

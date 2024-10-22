@@ -55,6 +55,7 @@ func main() {
 		wg.Add(1)
 		go func(s Student) {
 			defer wg.Done()
+			fmt.Print("Student in the library: ", len(students), "\n")
 			// Check if the channel is full
 			select {
 			case students <- s:
@@ -75,15 +76,16 @@ func main() {
 				fmt.Printf("Time %.0f: Student %d leaves the library with %d hours\n", openingTime, s.id, s.time)
 				<-students
 			}
+			fmt.Print("Student in the library: ", len(students), "\n")
 		}(student)
 	}
 
+	wg.Wait()
 	go func() {
-		wg.Wait()
 		close(students)
 	}()
 
-	wg.Wait()
+	// wg.Wait()
 	openingTime := time.Since(startTime).Seconds()
 	fmt.Printf("Time %.0f: No more students. Lets call it a day\n", openingTime)
 }
