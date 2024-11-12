@@ -232,7 +232,7 @@ func startFileTransfer(conn net.Conn) {
 	conn.Write([]byte("File download starting...\n"))
 
 	// Send file data
-	buffer = make([]byte, 1024)
+	buffer = make([]byte, 10)
 	for {
 		n, err := file.Read(buffer)
 		if err != nil && err != io.EOF {

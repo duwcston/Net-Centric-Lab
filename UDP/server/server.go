@@ -2,49 +2,72 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
-	"os"
 	"strconv"
+	"strings"
 )
 
+const (
+	HOST = "localhost"
+	PORT = "8080"
+	TYPE = "udp"
+)
+
+type Client struct {
+	Name string
+	Addr *net.UDPAddr
+}
+
+var clients = make(map[string]*Client)
+
+func random(min, max int) int {
+	return rand.Intn(max-min) + min
+}
+
 func main() {
-	serverPort := 8000
-	if len(os.Args) > 1 {
-		if v, err := strconv.Atoi(os.Args[1]); err != nil {
-			fmt.Printf("Invalid port %v, err %v", os.Args[1], err)
-			os.Exit(-1)
-		} else {
-			serverPort = v
-		}
+	arguments := []string{HOST + ":" + PORT}
+	if len(arguments) == 1 {
+		fmt.Println("Please provide a port number!")
+		return
+	}
+	PORT := ":" + arguments[1]
+
+	s, err := net.ResolveUDPAddr("udp4", PORT)
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
 
-	addr := net.UDPAddr{
-		Port: serverPort,
-		IP:   net.ParseIP("0.0.0.0"),
-	}
-	server, err := net.ListenUDP("udp", &addr)
+	connection, err := net.ListenUDP("udp4", s)
 	if err != nil {
-		fmt.Printf("Listen err %v\n", err)
-		os.Exit(-1)
+		fmt.Println(err)
+		return
 	}
-	fmt.Printf("Listen at %v\n", addr.String())
+
+	defer connection.Close()
+	buffer := make([]byte, 1024)
 
 	for {
-		p := make([]byte, 1024)
-		nn, raddr, err := server.ReadFromUDP(p)
-		if err != nil {
-			fmt.Printf("Read err  %v", err)
-			continue
+		n, addr, err := connection.ReadFromUDP(buffer)
+		fmt.Print("-> ", string(buffer[0:n-1]))
+
+		// If the client is not in the map, add it
+		if clients[string(buffer[0:n-1])] == nil {
+
 		}
 
-		msg := p[:nn]
-		fmt.Printf("Received %v %s\n", raddr, msg)
+		if strings.TrimSpace(string(buffer[0:n])) == "STOP" {
+			fmt.Println("Exiting UDP server!")
+			return
+		}
 
-		go func(conn *net.UDPConn, raddr *net.UDPAddr, msg []byte) {
-			_, err := conn.WriteToUDP([]byte(fmt.Sprintf("Pong: %s", msg)), raddr)
-			if err != nil {
-				fmt.Printf("Response err %v", err)
-			}
-		}(server, raddr, msg)
+		data := []byte(strconv.Itoa(random(1, 1001)))
+		fmt.Printf("data: %s\n", string(data))
+		_, err = connection.WriteToUDP(data, addr)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	}
 }

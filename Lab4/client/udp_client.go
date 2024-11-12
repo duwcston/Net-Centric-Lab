@@ -8,46 +8,83 @@ import (
 	"strings"
 )
 
+const (
+	HOST = "localhost"
+	PORT = "8080"
+	TYPE = "udp"
+)
+
 func main() {
-	arguments := os.Args
-	if len(arguments) == 1 {
-		fmt.Println("Please provide a host:port string")
-		return
-	}
-	CONNECT := arguments[1]
+	serverAddr := HOST + ":" + PORT
 
-	s, err := net.ResolveUDPAddr("udp4", CONNECT)
-	c, err := net.DialUDP("udp4", nil, s)
+	// Resolve server address
+	s, err := net.ResolveUDPAddr("udp4", serverAddr)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Error resolving address: ", err)
 		return
 	}
 
-	fmt.Printf("The UDP server is %s\n", c.RemoteAddr().String())
-	defer c.Close()
+	// Dial UDP connection
+	conn, err := net.DialUDP("udp4", nil, s)
+	if err != nil {
+		fmt.Println("Error connecting to server: ", err)
+		return
+	}
+	defer conn.Close()
 
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter your name: ")
+	username, _ := reader.ReadString('\n')
+	username = strings.TrimSpace(username)
+
+	// Register the username with the server
+	_, err = conn.Write([]byte("LOGIN " + username))
+	if err != nil {
+		fmt.Println("Error sending username to server: ", err)
+		return
+	}
+
+	fmt.Printf("Connected to UDP server at %s\n", conn.RemoteAddr().String())
+
+	// Start a goroutine to listen for incoming messages from the server
+	go func() {
+		for {
+			buffer := make([]byte, 1024)
+			n, _, err := conn.ReadFromUDP(buffer)
+			if err != nil {
+				fmt.Println("Error reading from server: ", err)
+				return
+			}
+			fmt.Printf("\nMessage: %s\n>> ", string(buffer[:n]))
+		}
+	}()
+
+	// Handle client input
 	for {
-		reader := bufio.NewReader(os.Stdin)
 		fmt.Print(">> ")
 		text, _ := reader.ReadString('\n')
-		data := []byte(text + "\n")
-		_, err = c.Write(data)
-		if strings.TrimSpace(string(data)) == "STOP" {
+		text = strings.TrimSpace(text)
+
+		// Check for exit command
+		if text == "STOP" {
+			_, err = conn.Write([]byte("LOGOUT " + username))
+			if err != nil {
+				fmt.Println("Error logging out: ", err)
+			}
 			fmt.Println("Exiting UDP client!")
 			return
 		}
 
-		if err != nil {
-			fmt.Println(err)
-			return
+		// Handle private and broadcast messaging
+		if strings.HasPrefix(text, "@") {
+			_, err = conn.Write([]byte("MSG " + text))
+		} else {
+			_, err = conn.Write([]byte("MSG @all " + text))
 		}
 
-		buffer := make([]byte, 1024)
-		n, _, err := c.ReadFromUDP(buffer)
 		if err != nil {
-			fmt.Println(err)
-			return
+			fmt.Println("Error sending message:", err)
+			continue
 		}
-		fmt.Printf("Reply: %s\n", string(buffer[0:n]))
 	}
 }
